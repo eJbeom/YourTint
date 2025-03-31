@@ -1,0 +1,38 @@
+<style>
+  @import "./ui.css";
+</style>
+<div id="root">
+  <header>
+    <div class="controller">
+      <button class="preview"></button>
+      <div class="text">
+        <p>#</p>
+        <input
+          type="text"
+          placeholder="f1f1f1"
+          maxlength="6"
+          name="hexColor"
+          id="hexInput"
+        />
+      </div>
+    </div>
+  </header>
+  <main>
+    <ol class="tints">
+      <li class="tint item-1"></li>
+      <li class="tint item-2"></li>
+      <li class="tint item-3"></li>
+      <li class="tint item-4"></li>
+      <li class="tint item-5"></li>
+      <li class="tint item-6"></li>
+      <li class="tint item-7"></li>
+      <li class="tint item-8"></li>
+      <li class="tint item-9"></li>
+      <li class="tint item-10"></li>
+    </ol>
+    <button id="addStylesBtn">add styles</button>
+  </main>
+</div>
+<script type="module">
+  import "./index.ts";
+</script>
