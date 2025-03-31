@@ -1,5 +1,5 @@
-import * as Generator from "./core/palette-generator";
-import { RGB } from "../types/color";
+import * as Generator from "../core/palette-generator";
+import { RGB } from "../../types/color";
 
 export function generatePalette(code: RGB): RGB[] {
   const normRGB: RGB = Generator.hsb2rgb(
@@ -23,10 +23,29 @@ export function denormalizeRGB(rgb: RGB): RGB {
   };
 }
 
+export function normalizeRGBS(rgbs: RGB[]): RGB[] {
+  return rgbs.map((rgb) => normalizeRGB(rgb));
+}
+
 export function normalizeRGB(rgb: RGB): RGB {
   return {
     red: rgb.red / 255,
     green: rgb.green / 255,
     blue: rgb.blue / 255,
+  };
+}
+
+export function normalizeRGBGamma(rgb: RGB) {
+  function applyGammaCorrection(value: number) {
+    let normalized = value / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : Math.pow((normalized + 0.055) / 1.055, 2.4);
+  }
+
+  return {
+    red: applyGammaCorrection(rgb.red),
+    green: applyGammaCorrection(rgb.green),
+    blue: applyGammaCorrection(rgb.blue),
   };
 }

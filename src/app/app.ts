@@ -1,11 +1,17 @@
 import * as Generator from "./core/palette-generator";
-import { bogan, RGBToString, RGBSToString } from "../utils/helpers";
+import {
+  bogan,
+  RGBToString,
+  findClosestRGB,
+  stringToRGBS,
+  contrastRatio,
+} from "../utils/helpers";
 import {
   generatePalette,
   denormalizeRGBS,
   denormalizeRGB,
-  normalizeRGB,
-} from "./RGBHelpers";
+  normalizeRGBS,
+} from "./utils/RGBHelpers";
 import { RGB } from "../types/color";
 import { FigmaPayload } from "../types/data";
 
@@ -13,33 +19,37 @@ export default class App {
   input: HTMLInputElement;
   preview: HTMLButtonElement;
   tints: HTMLOListElement;
+  ratioText: NodeListOf<HTMLParagraphElement>;
   addStylesBtn: HTMLButtonElement;
   borderManager: number[];
   colorManager: RGB[];
   mainColorIndex: number;
-  denormMainRGB: RGB;
-  palette: RGB[];
+  denormCurRGB: RGB;
+  denormPalette: RGB[];
 
   constructor() {
     this.input = document.getElementById("hexInput") as HTMLInputElement;
     this.preview = document.querySelector(".preview") as HTMLButtonElement;
     this.tints = document.querySelector(".tints") as HTMLOListElement;
+    this.ratioText = document.querySelectorAll(
+      ".ratio"
+    ) as NodeListOf<HTMLParagraphElement>;
     this.addStylesBtn = document.getElementById(
       "addStylesBtn"
     ) as HTMLButtonElement;
 
     this.borderManager = Array(10).fill(0);
     this.colorManager = Array.from({ length: 10 }, () => {
-      return { red: 255, green: 255, blue: 255 };
+      return { red: 241, green: 241, blue: 241 };
     });
-    this.mainColorIndex = 0;
-    this.denormMainRGB = {
+    this.mainColorIndex = 4;
+    this.denormCurRGB = {
       red: 255,
       green: 255,
       blue: 255,
     };
-    this.palette = Array.from({ length: 10 }, () => {
-      return { red: 255, green: 255, blue: 255 };
+    this.denormPalette = Array.from({ length: 10 }, () => {
+      return { red: 241, green: 241, blue: 241 };
     });
 
     this.input.addEventListener("change", this.handleInputChange.bind(this));
@@ -58,10 +68,38 @@ export default class App {
 
     this.postMessageToFigma({ type: "mouseOut" });
 
-    // color animation
-    for (let i = 0; i < this.palette.length; i++) {
+    this.updateColor();
+    this.updateBorder();
+    this.updateContrastRatio();
+  }
+
+  updateContrastRatio() {
+    for (let i = 0; i < this.denormPalette.length; i++) {
+      const whiteRatio = contrastRatio(this.denormPalette[i], {
+        red: 255,
+        green: 255,
+        blue: 255,
+      });
+      const blackRatio = contrastRatio(this.denormPalette[i], {
+        red: 0,
+        green: 0,
+        blue: 0,
+      });
+
+      if (whiteRatio >= blackRatio) {
+        this.ratioText[i].style.color = "white";
+        this.ratioText[i].textContent = String(whiteRatio.toFixed(1));
+      } else {
+        this.ratioText[i].style.color = "black";
+        this.ratioText[i].textContent = String(blackRatio.toFixed(1));
+      }
+    }
+  }
+
+  updateColor() {
+    for (let i = 0; i < this.denormPalette.length; i++) {
       const curColor = this.colorManager[i];
-      const targetColor = this.palette[i];
+      const targetColor = this.denormPalette[i];
       const tint = this.tints.children[i] as HTMLLIElement;
 
       const red = bogan(curColor.red, targetColor.red, 0.11);
@@ -78,22 +116,38 @@ export default class App {
       this.colorManager[i].green = green;
       this.colorManager[i].blue = blue;
     }
+  }
 
-    // border animation
-    const curTint = this.tints.children[this.mainColorIndex] as HTMLLIElement;
-
+  updateBorder() {
     this.borderManager[this.mainColorIndex] = bogan(
       this.borderManager[this.mainColorIndex],
       20,
       0.28
     );
-    curTint.style.borderRadius = this.borderManager[this.mainColorIndex] + "px";
+    const curTint = this.tints.children[this.mainColorIndex] as HTMLLIElement;
+
+    if (this.mainColorIndex === 0) {
+      curTint.style.borderBottomLeftRadius =
+        curTint.style.borderBottomRightRadius =
+          this.borderManager[this.mainColorIndex] + "px";
+      curTint.style.borderBottomRightRadius =
+        this.borderManager[this.mainColorIndex] + "px";
+    } else if (this.mainColorIndex === this.borderManager.length - 1) {
+      curTint.style.borderTopLeftRadius =
+        this.borderManager[this.mainColorIndex] + "px";
+      curTint.style.borderTopRightRadius =
+        this.borderManager[this.mainColorIndex] + "px";
+    } else {
+      curTint.style.borderRadius =
+        this.borderManager[this.mainColorIndex] + "px";
+    }
 
     for (let i = 0; i < this.borderManager.length; i++) {
       if (this.mainColorIndex === i) continue;
       const clearTint = this.tints.children[i] as HTMLLIElement;
 
       this.borderManager[i] = bogan(this.borderManager[i], 0, 0.28);
+
       if (i === 0) {
         clearTint.style.borderBottomLeftRadius = this.borderManager[i] + "px";
         clearTint.style.borderBottomRightRadius = this.borderManager[i] + "px";
@@ -109,51 +163,43 @@ export default class App {
   handleInputChange(e: Event) {
     if (!(e.target instanceof HTMLInputElement)) return;
 
-    const mainRGB = Generator.hex2rgb(String(e.target.value));
-    this.palette = denormalizeRGBS(generatePalette(mainRGB));
+    const normRGB = Generator.hex2rgb(String(e.target.value));
+    this.denormPalette = denormalizeRGBS(generatePalette(normRGB));
+    this.denormCurRGB = denormalizeRGB(normRGB);
 
-    this.denormMainRGB = denormalizeRGB(mainRGB);
-    this.palette.forEach((rgb: RGB, i: number) => {
+    const closestRGB = findClosestRGB(this.denormCurRGB, this.denormPalette);
+
+    this.denormPalette.forEach((rgb: RGB, i: number) => {
       if (
-        rgb.red === this.denormMainRGB.red &&
-        rgb.green === this.denormMainRGB.green &&
-        rgb.blue === this.denormMainRGB.blue
+        rgb.red === closestRGB.red &&
+        rgb.green === closestRGB.green &&
+        rgb.blue === closestRGB.blue
       ) {
+        console.log(rgb, closestRGB);
         this.mainColorIndex = i;
       }
     });
-
-    // this.setPaletteToDOM(RGBSToString(this.palette));
 
     this.input.blur();
     this.preview.style.backgroundColor = e.target.value;
   }
 
   handleAddStylesClick() {
-    const reg = new RegExp("\\d+, \\d+, \\d+");
-    const tints = this.getTints().map((rgbStr: string) => {
-      const matched = reg.exec(rgbStr);
+    const rgbs = stringToRGBS(this.getTints());
 
-      if (matched) {
-        const numRGB = matched[0].split(",").map((v) => parseInt(v));
+    if (rgbs) {
+      const tints = normalizeRGBS(rgbs);
 
-        return normalizeRGB({
-          red: numRGB[0],
-          green: numRGB[1],
-          blue: numRGB[2],
+      if (tints) {
+        this.postMessageToFigma({
+          type: "addStyles",
+          data: {
+            name: String(this.input.value),
+            rgbs: tints,
+          },
         });
       }
-
-      return { red: 0, green: 0, blue: 0 };
-    });
-
-    this.postMessageToFigma({
-      type: "addStyles",
-      data: {
-        name: "test",
-        rgbs: tints,
-      },
-    });
+    }
   }
 
   handleMessage(msg: MessageEvent) {
@@ -162,45 +208,37 @@ export default class App {
 
     switch (type) {
       case "selectedColor":
-        const mainRGB = pluginMessage.data as RGB;
-        const checkRGB = denormalizeRGB(mainRGB);
+        const normRGB = pluginMessage.data as RGB;
+        const denormRGB = denormalizeRGB(normRGB);
         if (
-          mainRGB === undefined ||
-          (this.denormMainRGB.red === checkRGB.red &&
-            this.denormMainRGB.green === checkRGB.green &&
-            this.denormMainRGB.blue === checkRGB.blue)
+          normRGB === undefined ||
+          (this.denormCurRGB.red === denormRGB.red &&
+            this.denormCurRGB.green === denormRGB.green &&
+            this.denormCurRGB.blue === denormRGB.blue)
         )
           break;
 
-        this.denormMainRGB = checkRGB;
+        this.denormCurRGB = denormRGB;
+        this.denormPalette = denormalizeRGBS(generatePalette(normRGB));
 
-        this.palette = denormalizeRGBS(generatePalette(mainRGB));
+        const closestRGB = findClosestRGB(
+          this.denormCurRGB,
+          this.denormPalette
+        );
 
-        this.palette.forEach((rgb: RGB, i: number) => {
+        this.denormPalette.forEach((rgb: RGB, i: number) => {
           if (
-            rgb.red === this.denormMainRGB.red &&
-            rgb.green === this.denormMainRGB.green &&
-            rgb.blue === this.denormMainRGB.blue
+            rgb.red === closestRGB.red &&
+            rgb.green === closestRGB.green &&
+            rgb.blue === closestRGB.blue
           ) {
             this.mainColorIndex = i;
           }
         });
 
-        // this.setPaletteToDOM(RGBSToString(this.palette));
-
-        this.input.value = Generator.rgb2hex(mainRGB);
-        this.preview.style.backgroundColor = RGBToString(this.denormMainRGB);
+        this.input.value = Generator.rgb2hex(normRGB);
+        this.preview.style.backgroundColor = RGBToString(this.denormCurRGB);
         break;
-    }
-  }
-
-  setPaletteToDOM(palette: string[]) {
-    for (let i = 0; i < this.tints.children.length; i++) {
-      const tint = this.tints.children[i];
-
-      if (tint instanceof HTMLLIElement) {
-        tint.style.backgroundColor = palette[i];
-      }
     }
   }
 
