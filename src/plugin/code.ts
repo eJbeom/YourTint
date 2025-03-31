@@ -1,18 +1,20 @@
 import { FigmaPayload } from "../types/data";
 import { AddStyles } from "../types/data";
+import { RGBToString, denormalizeRGB } from "../utils/RGBHelpers";
 
 figma.showUI(__html__);
 figma.ui.resize(144, 507);
 
-figma.ui.onmessage = (msg: FigmaPayload) => {
+figma.ui.onmessage = async (msg: FigmaPayload) => {
   switch (msg.type) {
     case "addStyles":
-      const data = msg.data as AddStyles;
-
       if (msg.data !== undefined) {
-        createStyles(data);
-        createPalette(data);
-        figma.viewport.scrollAndZoomIntoView(figma.currentPage.selection);
+        const data = msg.data as AddStyles;
+
+        if (data.name !== "") {
+          createStyles(data);
+          await createPalette(data);
+        }
       }
 
       break;
@@ -46,13 +48,15 @@ function createStyles(data: AddStyles) {
   }
 }
 
-function createPalette(addStyles: AddStyles) {
+async function createPalette(addStyles: AddStyles) {
   const colors = addStyles.rgbs;
   const frame = figma.createFrame();
   frame.resize(colors.length * 50 + 40, 90);
+
   for (let i = 0; i < colors.length; i++) {
     const color = colors[i];
     const rect = figma.createRectangle();
+    const text = figma.createText();
 
     rect.x = 50 * i + 20;
     rect.y = 20;
@@ -67,7 +71,20 @@ function createPalette(addStyles: AddStyles) {
         },
       },
     ];
+
+    text.x = 50 * i + 20;
+    text.y = 70;
+    await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+    text.fontSize = 10;
+    text.fills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
+    const denormRGB = denormalizeRGB(color);
+
+    text.characters = `#${denormRGB.red.toString(16)}${denormRGB.green.toString(
+      16
+    )}${denormRGB.blue.toString(16)}`;
+
     frame.appendChild(rect);
+    frame.appendChild(text);
   }
   figma.currentPage.appendChild(frame);
 }

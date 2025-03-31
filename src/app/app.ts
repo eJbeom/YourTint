@@ -1,17 +1,14 @@
 import * as Generator from "./core/palette-generator";
+import { bogan, contrastRatio } from "../utils/helpers";
 import {
-  bogan,
   RGBToString,
   findClosestRGB,
   stringToRGBS,
-  contrastRatio,
-} from "../utils/helpers";
-import {
   generatePalette,
   denormalizeRGBS,
   denormalizeRGB,
   normalizeRGBS,
-} from "./utils/RGBHelpers";
+} from "../utils/RGBHelpers";
 import { RGB } from "../types/color";
 import { FigmaPayload } from "../types/data";
 

@@ -139,9 +139,8 @@ main {
   animation: down 0.12 ease-out;
 }
 
-#addMsg:hover {
+#addMsg:active {
   transform: translate(0, -30);
-  font-weight: 500;
 }
 
 #addMsg p {
