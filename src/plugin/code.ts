@@ -1,6 +1,6 @@
 import { FigmaPayload } from "../types/data";
 import { AddStyles } from "../types/data";
-import { RGBToString, denormalizeRGB } from "../utils/RGBHelpers";
+import { denormalizeRGB } from "../utils/RGBHelpers";
 
 figma.showUI(__html__);
 figma.ui.resize(144, 507);
@@ -14,14 +14,22 @@ figma.ui.onmessage = async (msg: FigmaPayload) => {
         if (data.name !== "") {
           createStyles(data);
           await createPalette(data);
+          figma.viewport.scrollAndZoomIntoView(figma.currentPage.children);
         }
       }
 
       break;
-    case "mouseOut":
+    case "update":
       postSelectedColors();
 
       break;
+    // case "clickTint":
+    //   if (msg.data !== undefined) {
+    //     const data = msg.data as unknown as RGB;
+
+    // createObject(data);
+    //   }
+    //   break;
   }
 };
 

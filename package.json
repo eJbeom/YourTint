@@ -7,6 +7,8 @@
     "build": "npm run build:app && npm run build:plugin",
     "build:app": "parcel build src/app/ui.html --no-optimize",
     "build:plugin": "parcel build src/plugin/code.ts --no-optimize --no-source-maps",
+    "watch:app": "parcel watch src/app/ui.html",
+    "watch:plugin": "parcel watch src/plugin/code.ts --no-source-maps",
     "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
     "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix ."
   },

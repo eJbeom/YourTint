@@ -4,10 +4,12 @@ import {
   RGBToString,
   findClosestRGB,
   stringToRGBS,
+  stringToRGB,
   generatePalette,
   denormalizeRGBS,
   denormalizeRGB,
   normalizeRGBS,
+  normalizeRGB,
 } from "../utils/RGBHelpers";
 import { RGB } from "../types/color";
 import { FigmaPayload } from "../types/data";
@@ -49,6 +51,7 @@ export default class App {
       return { red: 241, green: 241, blue: 241 };
     });
 
+    this.tints.addEventListener("click", this.handleTintsClick.bind(this));
     this.input.addEventListener("change", this.handleInputChange.bind(this));
     this.addStylesBtn.addEventListener(
       "click",
@@ -63,7 +66,7 @@ export default class App {
   update() {
     window.requestAnimationFrame(this.update.bind(this));
 
-    this.postMessageToFigma({ type: "mouseOut" });
+    this.postMessageToFigma({ type: "update" });
 
     this.updateColor();
     this.updateBorder();
@@ -153,6 +156,21 @@ export default class App {
         clearTint.style.borderTopRightRadius = this.borderManager[i] + "px";
       } else {
         clearTint.style.borderRadius = this.borderManager[i] + "px";
+      }
+    }
+  }
+
+  handleTintsClick(e: PointerEvent) {
+    const target = e.target as HTMLLIElement;
+
+    if (target) {
+      const rgb = stringToRGB(target.style.backgroundColor);
+
+      if (rgb !== undefined) {
+        this.postMessageToFigma({
+          type: "clickTint",
+          data: normalizeRGB(rgb),
+        });
       }
     }
   }

@@ -130,7 +130,7 @@ main {
 #addStylesBtn:active {
   border: 1px solid #565656;
   box-shadow: none;
-  cursor: pointer;
+  /* cursor: pointer; */
 }
 
 #addMsg {
@@ -139,9 +139,9 @@ main {
   animation: down 0.12 ease-out;
 }
 
-#addMsg:active {
+/* #addMsg:active {
   transform: translate(0, -30);
-}
+} */
 
 #addMsg p {
   display: flex;
